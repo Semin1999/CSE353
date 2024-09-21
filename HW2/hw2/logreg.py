@@ -7,9 +7,9 @@ import pdb
 class LogReg(object):
     # W1: d x d, W2: d x 1, b: scalar
     def __init__(self, d, lamb):
-        self.W1 = nr.randn(d, d)
-        self.W2 = nr.randn(d)
-        self.b = nr.randn()
+        self.W1 = nr.randn(d, d) # Create d x d array (matrix) with random number
+        self.W2 = nr.randn(d) #  Create d length of array with random number
+        self.b = nr.randn() # it's just scalar with random number
         self.lamb = lamb # To be multiplied on the regularization term.
 
     def foo(self, x):
@@ -20,10 +20,35 @@ class LogReg(object):
 
     # TODO: Implement the log-likelihood function of the data
     def log_likelihood(self, data, labels):
-        pass
+        # Initialize the list label = 1 or not
+        list_label_true = []
+        list_label_false = []
+
+        # Fill the datas according to the labels
+        for i in range(len(labels)):
+            if labels[i] == 1:
+                list_label_true.append(data[i])
+            else:
+                list_label_false.append(data[i])
+
+        # logL(θ;D)= ∑ logσ(x_i) + ∑ logσ(1 - x_i)
+        log_likelihood_value = (
+                # here for the label = 1
+                np.sum(np.log(self.logistic(list_label_true))) +
+                # here for the label = 1, so add -1
+                np.sum(np.log(1 - self.logistic(list_label_false)))
+        )
+
+        return log_likelihood_value
 
     # TODO: Implement the derivatives of the log-likelihood w.r.t. each parameter, evaluated at x (x is d x 1)
     def dLLdW1(self, x):
+
+        sigma_z = self.logistic(x)
+
+        for i in range(self.W1.shape[0]):
+            y =
+
         pass
   
     def dLLdW2(self, x):
@@ -66,18 +91,34 @@ def read_data(filename):
     return data, labels
 
 def main(args): 
-    num_epoch = args.epochs
-    learning_rate = args.lr #1e-3
-    lamb = args.lambda
+    num_epoch = args.epochs # How many times u want to train?
+    learning_rate = args.lr # step for learning
+    lamb = args.lambdaValue  # To be multiplied on the regularization term.
 
-    tr_data, tr_gt = read_data('train.csv')
+    tr_data, tr_gt = read_data('train.csv') # originally train.csv has 1000 x 11 matrix, with label for the first column
     va_data, va_gt = read_data('val.csv')
     te_data, te_gt = read_data('test.csv')
+
+    print("training data shape [-1]: ", tr_data.shape[-1]) # get column number for training data set = 10
+    # So training set has 1000 data with 10-dimension vector
+
+    # W1: 10x10, W2: 10x1, b: scalar, lambda: 1e-2 (default)
     model = LogReg(tr_data.shape[-1], lamb)
+
+    # print(tr_data.shape) # 1000 x 10 shape training data set
+    # print(len(tr_gt)) # label for the 1000 training set
+    #
+    # print(va_data.shape) # 100 x 10 shape validate data set
+    # print(len(va_gt)) # label for the 100 validate set
+    #
+    # print(te_data.shape) # 100 x 10 shape test data set
+    # print(len(te_gt)) # label for the 1000 test set
+
 
     # An EPOCH is a single pass over the entire dataset.
     # Normally, we'd run this epoch loop until the learning has converged, but we'll
     # just run a fixed number of loops for this assignment.
+
     for ep in range(num_epoch):
         loss = model.step(tr_data, tr_gt, learning_rate)
         # Maybe add your own learning rate scheduler here?
@@ -89,7 +130,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--lr", type=float, default=1e-4)
-    parser.add_argument("--lambda", type=float, default=1e-2)
+    parser.add_argument("--lambdaValue", type=float, default=1e-2)
     parser.add_argument("--epochs", type=int, default=100)
     args = parser.parse_args()
     main(args)
