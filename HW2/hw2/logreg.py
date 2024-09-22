@@ -13,6 +13,7 @@ class LogReg(object):
         self.lamb = lamb # To be multiplied on the regularization term.
 
     def foo(self, x):
+        # x^T*W1*x + x^T*W2 + b -> it is z
         return np.dot(x, np.dot(self.W1, x)) + np.dot(x, self.W2) + self.b
 
     def logistic(self, x):
@@ -31,48 +32,114 @@ class LogReg(object):
             else:
                 list_label_false.append(data[i])
 
+        # Convert lists to numpy arrays
+        array_label_true = np.array(list_label_true)
+        array_label_false = np.array(list_label_false)
+
+        # Apply logistic function to each data point
+        logistic_true = np.apply_along_axis(self.logistic, 1, array_label_true)
+        logistic_false = np.apply_along_axis(self.logistic, 1, array_label_false)
+        
         # logL(θ;D)= ∑ logσ(x_i) + ∑ logσ(1 - x_i)
         log_likelihood_value = (
-                # here for the label = 1
-                np.sum(np.log(self.logistic(list_label_true))) +
-                # here for the label = 1, so add -1
-                np.sum(np.log(1 - self.logistic(list_label_false)))
+            # here for the label = 1
+                np.sum(np.log(logistic_true)) +
+                # here for the label = 0
+                np.sum(np.log(1 - logistic_false))
         )
 
         return log_likelihood_value
 
     # TODO: Implement the derivatives of the log-likelihood w.r.t. each parameter, evaluated at x (x is d x 1)
     def dLLdW1(self, x):
+        derivative = np.outer(x, x)
+        logistic = self.logistic(x)
+        return logistic * (1 - logistic) * derivative
 
-        sigma_z = self.logistic(x)
-
-        for i in range(self.W1.shape[0]):
-            y =
-
-        pass
-  
     def dLLdW2(self, x):
-        pass
+        derivative = x
+        logistic = self.logistic(x)
+        return logistic * (1 - logistic) * derivative
 
     def dLLdb(self, x):
-        pass
+        derivative = 1
+        logistic = self.logistic(x)
+        return logistic * (1 - logistic) * derivative
 
     # TODO: Return the L2 regularization term.
     def l2_reg(self):
-        pass
+        sum = np.sum(self.W1**2) + np.sum(self.W2**2) + np.sum(self.b**2)
+        return self.lamb * sum
 
     # TODO: Implement the classification rule on x (i.e., what is the label of x?)
     def predict(self, x):
-        pass
+        if self.logistic(x) > 0.5:
+            return_value = 1
+        else:
+            return_value = 0
+
+        return return_value
 
     # TODO: Implement a single gradient ascent step, and return the objective (*not* the log-likelihood!!)
     # Question: What is the objective?
     def step(self, dat, lbl, lr):
-        pass
+        curr_W1, curr_W2, curr_b = self.W1.copy(), self.W2.copy(), self.b
+
+        gradient_W1 = np.zeros_like(self.W1)
+        gradient_W2 = np.zeros_like(self.W2)
+        gradient_b = 0
+
+        for i in range(len(dat)):
+            x, y = dat[i], lbl[i]
+            p = self.logistic(x)
+            gradient_W1 += self.dLLdW1(x) * (y - p)
+            gradient_W2 += self.dLLdW2(x) * (y - p)
+            gradient_b += self.dLLdb(x) * (y - p)
+
+        next_W1 = curr_W1 + lr * gradient_W1
+        next_W2 = curr_W2 + lr * gradient_W2
+        next_b = curr_b + lr * gradient_b
+
+        step_W1 = next_W1 - curr_W1
+        step_W2 = next_W2 - curr_W2
+        step_b = next_b - curr_b
+
+        self.W1, self.W2, self.b = next_W1, next_W2, next_b
+
+        objective = -self.log_likelihood(dat, lbl) + self.l2_reg()
+        return objective
 
     # TODO: Implement the F1 measure computation. 
     def f1(step, test_data, test_gt):
-        pass
+
+        predictions = [step.predict(x) for x in test_data]
+
+        true_positive = 0
+        false_positive = 0
+        false_negative = 0
+        positive = 0
+
+        for prediction, test in zip(predictions, test_gt):
+            if prediction == 1 and test == 1:
+                true_positive += 1
+            elif prediction == 1 and test == 0:
+                false_positive += 1
+            elif prediction == 0 and test == 1:
+                false_negative += 1
+
+        # for predictions, test in zip(predictions, test_gt):
+        #     if predictions == 1 or test == 1:
+        #         positive += 1
+
+        precision = true_positive / (true_positive + false_positive)
+        recall = true_positive / (false_negative + true_positive)
+
+        f1_score = 2 * (precision * recall) / (precision + recall)
+
+        if f1_score < 0:
+            f1_score = 0
+
+        return f1_score
 
 
 # Returns a numpy array of size n x d, where n is the number of samples and d is the dimensions
@@ -99,11 +166,13 @@ def main(args):
     va_data, va_gt = read_data('val.csv')
     te_data, te_gt = read_data('test.csv')
 
-    print("training data shape [-1]: ", tr_data.shape[-1]) # get column number for training data set = 10
+    # print("training data shape [-1]: ", tr_data.shape[-1]) # get column number for training data set = 10
     # So training set has 1000 data with 10-dimension vector
 
     # W1: 10x10, W2: 10x1, b: scalar, lambda: 1e-2 (default)
+    # print(tr_data.shape[-1]) # 10-demension
     model = LogReg(tr_data.shape[-1], lamb)
+    # x^2+x+c , with lamb
 
     # print(tr_data.shape) # 1000 x 10 shape training data set
     # print(len(tr_gt)) # label for the 1000 training set
