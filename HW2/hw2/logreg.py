@@ -1,9 +1,9 @@
 import numpy as np
 import argparse
 import numpy.random as nr
+import matplotlib.pyplot as plt
 import sys
 import pdb
-import matplotlib.pyplot as plt
 import time
 
 class LogReg(object):
@@ -153,6 +153,31 @@ class LogReg(object):
 
         return f1_score
 
+    def get_precision_recall(step, test_data, test_gt):
+        # get predictions from test data
+        predictions = [step.predict(x) for x in test_data]
+
+        # initialize the variables that need to make precision and recall
+        true_positive = 0
+        false_positive = 0
+        false_negative = 0
+
+        # This is quite intuitive according to evaluate model lecture slide
+        for prediction, test in zip(predictions, test_gt):
+            if prediction == 1 and test == 1:
+                true_positive += 1
+            elif prediction == 1 and test == 0:
+                false_positive += 1
+            elif prediction == 0 and test == 1:
+                false_negative += 1
+
+        # precision: How many of the found items are correct?
+        precision = true_positive / (true_positive + false_positive)
+        # recall : how many of the relevant items did we find?
+        recall = true_positive / (false_negative + true_positive)
+
+        return precision, recall
+
 
 # Returns a numpy array of size n x d, where n is the number of samples and d is the dimensions
 def read_data(filename):
@@ -202,6 +227,8 @@ def main(args):
     f1_list = []
     val_loss_list = []
     val_f1_list = []
+    precision_train, recall_train = [], []
+    precision_val, recall_val = [], []
 
     for ep in range(num_epoch):
         # Get loss value to the validation model
@@ -212,6 +239,11 @@ def main(args):
         val_f1 = model.f1(va_data, va_gt)
         val_f1_list.append(val_f1)
 
+        # Get precision recall for validation model
+        vp, vr = model.get_precision_recall(va_data, va_gt)
+        precision_val.append(vp)
+        recall_val.append(vr)
+
         # Get loss value to the model
         loss = model.step(tr_data, tr_gt, learning_rate)
         loss_list.append(loss)
@@ -219,6 +251,12 @@ def main(args):
         # Get F1 score to the model
         f1 = model.f1(te_data, te_gt)
         f1_list.append(f1)
+
+        # Get precision recall for training set
+        tp, tr = model.get_precision_recall(tr_data, tr_gt)
+        precision_train.append(tp)
+        recall_train.append(tr)
+
 
         # Maybe add your own learning rate scheduler here?
         # print Regularized and Validated loss
@@ -242,6 +280,15 @@ def main(args):
     plt.xlabel('Epoch')
     plt.ylabel('F1 score')
     plt.title('Training and Validation F1 vs Epoch')
+    plt.legend()
+    plt.show()
+
+    # PLOT Precision-Recall curve
+    plt.plot(recall_val, precision_val, color='red', label='Validation')
+    plt.plot(recall_train, precision_train, color='grey', label='Training')
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.title('Precision-Recall curve')
     plt.legend()
     plt.show()
 
@@ -312,7 +359,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--lr", type=float, default=(1e-4))
-    parser.add_argument("--lambdaValue", type=float, default=(1e-2))
+    parser.add_argument("--lambdaValue", type=float, default=(1e-2)*0.33)
     parser.add_argument("--epochs", type=int, default=1500)
     args = parser.parse_args()
     main(args)
