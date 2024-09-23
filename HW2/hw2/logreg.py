@@ -15,7 +15,7 @@ class LogReg(object):
         self.lamb = lamb # To be multiplied on the regularization term.
 
     def foo(self, x):
-        # x^T*W1*x + x^T*W2 + b -> it is z
+        # x^T*W1*x + x^T*W2 + b
         return np.dot(x, np.dot(self.W1, x)) + np.dot(x, self.W2) + self.b
 
     def logistic(self, x):
@@ -42,7 +42,7 @@ class LogReg(object):
         logistic_true = np.apply_along_axis(self.logistic, 1, array_label_true)
         logistic_false = np.apply_along_axis(self.logistic, 1, array_label_false)
 
-        # logL(θ;D)= ∑ logσ(x_i) + ∑ logσ(1 - x_i)
+        # logL(θ;D)= ∑ logσ(x_i) + ∑ logσ(1 - x_i) -> get log_likelihood value according to the lecture slide
         log_likelihood_value = (
             # here for the label = 1
                 np.sum(np.log(logistic_true)) +
@@ -54,27 +54,29 @@ class LogReg(object):
 
     # TODO: Implement the derivatives of the log-likelihood w.r.t. each parameter, evaluated at x (x is d x 1)
     def dLLdW1(self, x):
+        # if you derivative W1 on x^T*W1*x + x^T*W2 + b, then only x^T*W1*x considered, and W1 will be 1, then only remainig is x^Tx
         derivative = np.outer(x, x)
-        #logistic = self.logistic(x)
         return derivative
 
     def dLLdW2(self, x):
+        # if you derivative W2 on x^T*W1*x + x^T*W2 + b, then only  x^T*W2 considered, then derivative to x
         derivative = x
-        # logistic = self.logistic(x)
         return derivative
 
     def dLLdb(self, x):
+        # if you derivative b on x^T*W1*x + x^T*W2 + b, then only b considered, then 1
         derivative = 1
-        #logistic = self.logistic(x)
         return derivative
 
     # TODO: Return the L2 regularization term.
     def l2_reg(self):
+        # the regularized for complexity is 'lamb * summationNotation(parameter^2)', b is bias, so only W1, and W2 considered
         sum = np.sum(self.W1**2) + np.sum(self.W2**2)
         return self.lamb * sum
 
     # TODO: Implement the classification rule on x (i.e., what is the label of x?)
     def predict(self, x):
+        # if logistic value is over 0.5, it is binary data, so return 1 else 0
         if self.logistic(x) > 0.5:
             return_value = 1
         else:
@@ -85,37 +87,50 @@ class LogReg(object):
     # TODO: Implement a single gradient ascent step, and return the objective (*not* the log-likelihood!!)
     # Question: What is the objective?
     def step(self, dat, lbl, lr):
+        # Use gradient ascent
 
+        # save the current value to the new initialized variables
         curr_W1, curr_W2, curr_b = self.W1.copy(), self.W2.copy(), self.b
 
+        # reset the values
         d = dat.shape[-1]
         gradient_W1 = nr.randn(d,d)
         gradient_W2 = nr.randn(d)
         gradient_b = nr.randn()
 
         for i in range(len(dat)):
+            # Calculate the logistic function value for the current data point dat[i].
             logistic_value = self.logistic(dat[i])
+            # Compute the gradients of the loss with respect to each parameter.
+            # It is gradient ascent, so added up the values
             gradient_W1 += self.dLLdW1(dat[i]) * (lbl[i] - logistic_value)
             gradient_W2 += self.dLLdW2(dat[i]) * (lbl[i] - logistic_value)
             gradient_b += self.dLLdb(dat[i]) * (lbl[i] - logistic_value)
 
+        # update to the next value
+        # It is gradient ascent, so added up the values
         next_W1 = curr_W1 + lr * gradient_W1
         next_W2 = curr_W2 + lr * gradient_W2
         next_b = curr_b + lr * gradient_b
 
+        # update to the model parameters
         self.W1, self.W2, self.b = next_W1, next_W2, next_b
 
-        loss = -self.log_likelihood(dat, lbl) / len(dat)
+        # device likelihood values with data size
+        loss = - self.log_likelihood(dat, lbl) / len(dat)
         return loss
 
     # TODO: Implement the F1 measure computation.
     def f1(step, test_data, test_gt):
+        # get predictions from test data
         predictions = [step.predict(x) for x in test_data]
 
+        # initialize the variables that need to make precision and recall
         true_positive = 0
         false_positive = 0
         false_negative = 0
 
+        # This is quite intuitive according to evaluate model lecture slide
         for prediction, test in zip(predictions, test_gt):
             if prediction == 1 and test == 1:
                 true_positive += 1
@@ -124,11 +139,15 @@ class LogReg(object):
             elif prediction == 0 and test == 1:
                 false_negative += 1
 
+        # precision: How many of the found items are correct?
         precision = true_positive / (true_positive + false_positive)
+        # recall : how many of the relevant items did we find?
         recall = true_positive / (false_negative + true_positive)
 
+        # harmonic mean of precision and recall
         f1_score = 2 * (precision * recall) / (precision + recall)
 
+        # there might be...!
         if f1_score < 0:
             f1_score = 0
 
@@ -151,13 +170,11 @@ def read_data(filename):
     return data, labels
 
 def main(args):
-    start = time.time()  # 시작 시간 저장
-
     num_epoch = args.epochs # How many times u want to train?
     learning_rate = args.lr # step for learning
     lamb = args.lambdaValue  # To be multiplied on the regularization term.
 
-    tr_data, tr_gt = read_data('train.csv') # originally train.csv has 1000 x 11 matrix, with label for the first column
+    tr_data, tr_gt = read_data('train.csv') # maybe train.csv has 1000 x 11 matrix, with label for the first column
     va_data, va_gt = read_data('val.csv')
     te_data, te_gt = read_data('test.csv')
 
@@ -165,45 +182,48 @@ def main(args):
     # So training set has 1000 data with 10-dimension vector
 
     # W1: 10x10, W2: 10x1, b: scalar, lambda: 1e-2 (default)
-    # print(tr_data.shape[-1]) # 10-demension
+    # print(tr_data.shape[-1]) # Check what dimensional is it
     model = LogReg(tr_data.shape[-1], lamb)
-    # x^2+x+c , with lamb
 
+    # Check the shapes of datas
     # print(tr_data.shape) # 1000 x 10 shape training data set
     # print(len(tr_gt)) # label for the 1000 training set
-    #
     # print(va_data.shape) # 100 x 10 shape validate data set
     # print(len(va_gt)) # label for the 100 validate set
-    #
     # print(te_data.shape) # 100 x 10 shape test data set
     # print(len(te_gt)) # label for the 1000 test set
-
 
     # An EPOCH is a single pass over the entire dataset.
     # Normally, we'd run this epoch loop until the learning has converged, but we'll
     # just run a fixed number of loops for this assignment.
 
+    # Initialize the lists to use drawing the plot
     loss_list = []
     f1_list = []
     val_loss_list = []
     val_f1_list = []
 
     for ep in range(num_epoch):
+        # Get loss value to the validation model
         val_loss = -model.log_likelihood(va_data, va_gt) / len(va_data) + model.l2_reg()
         val_loss_list.append(val_loss)
 
+        # Get validation f1 score the model
         val_f1 = model.f1(va_data, va_gt)
         val_f1_list.append(val_f1)
 
+        # Get loss value to the model
         loss = model.step(tr_data, tr_gt, learning_rate)
         loss_list.append(loss)
 
+        # Get F1 score to the model
         f1 = model.f1(te_data, te_gt)
         f1_list.append(f1)
 
         # Maybe add your own learning rate scheduler here?
-        #print('[Epoch {}] Regularized loss = {}'.format(ep, loss))
-        print('[Epoch {}] Regularized loss = {}'.format(ep, val_loss))
+        # print Regularized and Validated loss
+        print('[Epoch {}] Regularized loss = {}'.format(ep, loss))
+        print('[Epoch {}] Validation loss = {}'.format(ep, val_loss))
 
     print('F1 score on test data = {}'.format(model.f1(te_data, te_gt)))
 
@@ -225,12 +245,69 @@ def main(args):
     plt.legend()
     plt.show()
 
-    print("function time Consumed :", time.time() - start)
-
-
-
-
-
+# def main(args):
+#    start_time = time.time()
+#
+#
+#    weight = [0.01, 0.1, 0.33, 0.5, 1, 2, 3, 10, 100]
+#    for i in weight:
+#        for j in weight:
+#
+#
+#            num_epoch = 1500
+#            learning_rate = args.lr * i
+#            lamb = args.lambdaValue * j
+#
+#
+#            tr_data, tr_gt = read_data('train.csv')
+#            va_data, va_gt = read_data('val.csv')
+#            te_data, te_gt = read_data('test.csv')
+#
+#
+#            model = LogReg(tr_data.shape[-1], lamb)
+#
+#
+#            loss_list = []
+#            f1_list = []
+#            val_loss_list = []
+#            val_f1_list = []
+#
+#
+#            for ep in range(num_epoch):
+#                val_loss = -model.log_likelihood(va_data, va_gt) / len(va_data) + model.l2_reg()
+#                val_loss_list.append(val_loss)
+#
+#
+#                val_f1 = model.f1(va_data, va_gt)
+#                val_f1_list.append(val_f1)
+#
+#
+#                loss = model.step(tr_data, tr_gt, learning_rate)
+#                loss_list.append(loss)
+#
+#
+#                f1 = model.f1(te_data, te_gt)
+#                f1_list.append(f1)
+#
+#
+#            print(f'** DONE (Learning Rate*{i} / lambda*{j}): F1 score on validation data = {model.f1(va_data, va_gt)} **')
+#
+#
+#            # PLOT Loss and F1
+#            plt.plot(range(num_epoch), loss_list, color='green', label='Training Loss')
+#            plt.plot(range(num_epoch), val_loss_list, color='orange', label='Validation Loss')
+#            plt.xlabel('Epoch')
+#            plt.ylabel('Loss')
+#            plt.title(f'Learning Rate*{i} / lambda*{j} Loss vs Epoch')
+#            plt.legend()
+#            filename = f'loss_graph_lr_{i}_lambda_{j}.png'
+#            plt.savefig(filename)
+#            plt.show()
+#
+#
+#    end_time = time.time()
+#    execution_time = end_time - start_time
+#    print(f"Time consumed: {execution_time} s")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
