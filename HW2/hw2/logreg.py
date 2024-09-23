@@ -4,6 +4,7 @@ import numpy.random as nr
 import sys
 import pdb
 import matplotlib.pyplot as plt
+import time
 
 class LogReg(object):
     # W1: d x d, W2: d x 1, b: scalar
@@ -69,7 +70,7 @@ class LogReg(object):
 
     # TODO: Return the L2 regularization term.
     def l2_reg(self):
-        sum = np.sum(self.W1**2) + np.sum(self.W2**2) + np.sum(self.b**2)
+        sum = np.sum(self.W1**2) + np.sum(self.W2**2)
         return self.lamb * sum
 
     # TODO: Implement the classification rule on x (i.e., what is the label of x?)
@@ -88,14 +89,15 @@ class LogReg(object):
         curr_W1, curr_W2, curr_b = self.W1.copy(), self.W2.copy(), self.b
 
         d = dat.shape[-1]
-        gradient_W1 = nr.randn(d, d)
+        gradient_W1 = nr.randn(d,d)
         gradient_W2 = nr.randn(d)
         gradient_b = nr.randn()
 
         for i in range(len(dat)):
-            gradient_W1 += self.dLLdW1(dat[i]) * (lbl[i] - self.logistic(dat[i]))
-            gradient_W2 += self.dLLdW2(dat[i]) * (lbl[i] - self.logistic(dat[i]))
-            gradient_b += self.dLLdb(dat[i]) * (lbl[i] - self.logistic(dat[i]))
+            logistic_value = self.logistic(dat[i])
+            gradient_W1 += self.dLLdW1(dat[i]) * (lbl[i] - logistic_value)
+            gradient_W2 += self.dLLdW2(dat[i]) * (lbl[i] - logistic_value)
+            gradient_b += self.dLLdb(dat[i]) * (lbl[i] - logistic_value)
 
         next_W1 = curr_W1 + lr * gradient_W1
         next_W2 = curr_W2 + lr * gradient_W2
@@ -103,17 +105,16 @@ class LogReg(object):
 
         self.W1, self.W2, self.b = next_W1, next_W2, next_b
 
-        loss = self.l2_reg() - self.log_likelihood(dat, lbl)
+        loss = -self.log_likelihood(dat, lbl) / len(dat)
         return loss
 
-    # TODO: Implement the F1 measure computation. 
+    # TODO: Implement the F1 measure computation.
     def f1(step, test_data, test_gt):
         predictions = [step.predict(x) for x in test_data]
 
         true_positive = 0
         false_positive = 0
         false_negative = 0
-        positive = 0
 
         for prediction, test in zip(predictions, test_gt):
             if prediction == 1 and test == 1:
@@ -150,6 +151,8 @@ def read_data(filename):
     return data, labels
 
 def main(args):
+    start = time.time()  # 시작 시간 저장
+
     num_epoch = args.epochs # How many times u want to train?
     learning_rate = args.lr # step for learning
     lamb = args.lambdaValue  # To be multiplied on the regularization term.
@@ -186,8 +189,7 @@ def main(args):
     val_f1_list = []
 
     for ep in range(num_epoch):
-
-        val_loss = model.l2_reg() - model.log_likelihood(va_data, va_gt)
+        val_loss = -model.log_likelihood(va_data, va_gt) / len(va_data) + model.l2_reg()
         val_loss_list.append(val_loss)
 
         val_f1 = model.f1(va_data, va_gt)
@@ -200,7 +202,8 @@ def main(args):
         f1_list.append(f1)
 
         # Maybe add your own learning rate scheduler here?
-        print('[Epoch {}] Regularized loss = {}'.format(ep, loss))
+        #print('[Epoch {}] Regularized loss = {}'.format(ep, loss))
+        print('[Epoch {}] Regularized loss = {}'.format(ep, val_loss))
 
     print('F1 score on test data = {}'.format(model.f1(te_data, te_gt)))
 
@@ -210,6 +213,7 @@ def main(args):
     plt.xlabel('Epoch')
     plt.ylabel('Loss')
     plt.title('Training and Validation Loss vs Epoch')
+    plt.legend()
     plt.show()
 
     # PLOT F1 Score
@@ -218,13 +222,20 @@ def main(args):
     plt.xlabel('Epoch')
     plt.ylabel('F1 score')
     plt.title('Training and Validation F1 vs Epoch')
+    plt.legend()
     plt.show()
+
+    print("function time Consumed :", time.time() - start)
+
+
+
+
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--lr", type=float, default=1e-4)
-    parser.add_argument("--lambdaValue", type=float, default=1e-2)
-    parser.add_argument("--epochs", type=int, default=1000)
+    parser.add_argument("--lr", type=float, default=(1e-4))
+    parser.add_argument("--lambdaValue", type=float, default=(1e-2))
+    parser.add_argument("--epochs", type=int, default=1500)
     args = parser.parse_args()
     main(args)
