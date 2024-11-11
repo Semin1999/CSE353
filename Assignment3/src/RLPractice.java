@@ -2,6 +2,12 @@ import java.util.Random;
 // You can import more 'standard' Java packages, but no third-party softwares.
 
 /*
+ Class(HW): CSE353(HW3)
+ Name(ID): Semin Bae(114730530)
+ E-mail: semin.bae@stonybrook.edu
+ */
+
+/*
  * State IDs:
  * 0 1 2 3 4 5 ... nCols - 1
  * nCols ... nCols * 2 - 1
@@ -209,7 +215,7 @@ public class RLPractice {
 
         //Initialize Q(s, a) arbitrarily
         double[][] Q = new double[nStates][nActions];
-0.
+
         // Repeat (for each episode):
         for(int episode = 0; episode < nEpisode; episode++){
             //Initialize s
