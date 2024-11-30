@@ -11,89 +11,85 @@ class MyCNN:
     # The size of 'img' is bs x nc x w x h (bs == batch size, nc == number of channels)
     # The size of 'filters' is ni x w x h x no, where 'ni' is the number of input channels and 'no' is the number of output channels.
     def conv(self, img, filters, stride=1, padding=0):
-        # 1. 입력 이미지의 크기 가져오기
+        # get size of img and filters
         bs, nc, h, w = img.shape
         ni, fh, fw, no = filters.shape
 
-        # 2. 패딩 적용
+        # if padding > 0, get padding
         if padding > 0:
-            # numpy.pad를 사용하여 이미지에 패딩 추가
-            # ((위,아래), (좌,우)) 각각에 padding 크기만큼 추가
             padded_img = np.pad(img, ((0, 0), (0, 0), (padding, padding), (padding, padding)),mode='constant')
         else:
             padded_img = img
 
-        # 3. 출력 크기 계산
+        # calculate output size
         out_h = (h - fh + 2 * padding) // stride + 1
         out_w = (w - fw + 2 * padding) // stride + 1
 
+        # initialize output with zero
         output = np.zeros((bs, no, out_h, out_w))
 
-        # 5. Convolution 연산 수행
-        for b in range(bs):  # 각 배치에 대해
-            for i in range(out_h):  # 출력 높이
-                for j in range(out_w):  # 출력 너비
-                    # 현재 위치에서의 입력 영역 추출
+        # Convolution step
+        for b in range(bs):  # each batch
+            for i in range(out_h):  # each height
+                for j in range(out_w):  # each width
+                    # Find the input region covered by the filter
                     h_start = i * stride
                     h_end = h_start + fh
                     w_start = j * stride
                     w_end = w_start + fw
-
-                    # 입력 영역 추출
+                    # Extract the region from the input
                     input_slice = padded_img[b, :, h_start:h_end, w_start:w_end]
 
                     # 각 출력 채널에 대해 합성곱 연산
-                    for k in range(no):  # 출력 채널
-                        # sum over input channels
+                    for k in range(no):  # each channel
+                        # Apply the filter to the input region and sum the result
                         output[b, k, i, j] = np.sum(input_slice * filters[:, :, :, k])
 
         return output
 
     # TODO: Implement pooling. The 'ptype' variable can be either 'max' or 'avg' (max pooling and average pooling).
     def pool(self, img, size=2, stride=2, padding=0, ptype='max'):
-        # 1. 입력 이미지의 크기 가져오기
+        # get img shape
         bs, nc, h, w = img.shape
 
-        # 2. 패딩 적용
+        # padding
         if padding > 0:
-            padded_img = np.pad(img,
-                                ((0, 0), (0, 0), (padding, padding), (padding, padding)),
-                                mode='constant')
+            padded_img = np.pad(img,((0, 0), (0, 0), (padding, padding), (padding, padding)), mode='constant')
         else:
             padded_img = img
 
-        # 3. 출력 크기 계산
+        # calculate output size
         out_h = (h - size + 2 * padding) // stride + 1
         out_w = (w - size + 2 * padding) // stride + 1
 
-        # 4. 출력을 저장할 배열 초기화
+        # initialize output with zero
         output = np.zeros((bs, nc, out_h, out_w))
 
-        # 5. Max Pooling 수행
+        # max pooling
         if ptype == 'max':
-            for b in range(bs):  # 각 배치에 대해
-                for c in range(nc):  # 각 채널에 대해
-                    for i in range(out_h):  # 출력 높이
-                        for j in range(out_w):  # 출력 너비
+            for b in range(bs):
+                for c in range(nc):
+                    for i in range(out_h):
+                        for j in range(out_w):
                             h_start = i * stride
                             h_end = h_start + size
                             w_start = j * stride
                             w_end = w_start + size
-                            # 영역에서 최대값 찾기
+                            # find max area
                             pool_region = padded_img[b, c, h_start:h_end, w_start:w_end]
                             output[b, c, i, j] = np.max(pool_region)
 
-        # 6. Average Pooling 수행
+        # average pooling
         elif ptype == 'avg':
-            for b in range(bs):  # 각 배치에 대해
-                for c in range(nc):  # 각 채널에 대해
-                    for i in range(out_h):  # 출력 높이
-                        for j in range(out_w):  # 출력 너비
+            for b in range(bs):
+                for c in range(nc):
+                    for i in range(out_h):
+                        for j in range(out_w):
                             h_start = i * stride
                             h_end = h_start + size
                             w_start = j * stride
                             w_end = w_start + size
-                            # 영역의 평균값 계산
+                            # calculate average
                             pool_region = padded_img[b, c, h_start:h_end, w_start:w_end]
                             output[b, c, i, j] = np.mean(pool_region)
 
